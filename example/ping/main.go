@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -10,8 +11,8 @@ import (
 
 func main() {
 	go Client0()
-	go Client1()
-	go Client2()
+	//go Client1()
+	//go Client2()
 
 	r := orbit.InitRouter()
 	r.Handle(1, func(ctx *orbit.Context) {
@@ -19,7 +20,17 @@ func main() {
 		ctx.Write([]byte("pong"))
 	})
 
-	srv := orbit.New(orbit.WithRouter(r))
+	srv := orbit.New(
+		orbit.WithNetwork("tcp"),
+		orbit.WithIP("127.0.0.1"),
+		orbit.WithPort(62817),
+		orbit.WithMaxConns(10),
+		orbit.WithMaxMessagePacketSize(1024),
+		orbit.WithMaxWorkerPoolSize(1),
+		orbit.WithMaxWorkerTasksQueueLength(64),
+		orbit.WithRouter(r),
+		orbit.WithContext(context.Background()),
+	)
 	if err := srv.Run(); err != nil {
 		panic(err)
 	}
@@ -89,11 +100,11 @@ func read(conn net.Conn) {
 		}
 		fmt.Printf("[ CLIENT ] receive msg form server: protocol = %d, data = %s\n", receive.GetProtocol(), string(data))
 
-		if i >= 5 {
+		if i >= 2 {
 			break
 		}
 
-		time.Sleep(1 * time.Second)
+		time.Sleep(3 * time.Second)
 		i++
 	}
 }

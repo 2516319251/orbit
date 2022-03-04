@@ -42,17 +42,19 @@ func (w *worker) UseSingleWorker(wid int, taskQueue chan *Context) {
 	for {
 		select {
 		case task := <-taskQueue:
-			w.router.do(task)
+			w.router.exec(task)
 		}
 	}
 }
 
 // JoinTaskQueue 加入任务队列
 func (w *worker) JoinTaskQueue(ctx *Context) {
-	h := fnv.New32a()
-	h.Write([]byte(ctx.RemoteAddr()))
-	i := int(h.Sum32()) % w.poolSize
+	if ctx != nil {
+		h := fnv.New32a()
+		h.Write([]byte(ctx.RemoteAddr()))
+		i := int(h.Sum32()) % w.poolSize
 
-	log.Println(fmt.Sprintf("[ WORKER ] worker %d serves for %s, protocol: %d, data: %s", i, ctx.RemoteAddr(), ctx.Protocol(), ctx.RawData()))
-	w.taskQueue[i] <- ctx
+		log.Println(fmt.Sprintf("[ WORKER ] worker %d serves for %s, protocol: %d, data: %s", i, ctx.RemoteAddr(), ctx.Protocol(), ctx.RawData()))
+		w.taskQueue[i] <- ctx
+	}
 }

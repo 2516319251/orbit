@@ -22,7 +22,6 @@ type Connection interface {
 type connection struct {
 	conn    *net.TCPConn
 	manager Manager
-	router  Router
 	worker  Worker
 
 	size  uint32
@@ -30,16 +29,14 @@ type connection struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
-
-	close bool
+	close  bool
 }
 
 // newConnection 创建连接
-func newConnection(conn *net.TCPConn, manager Manager, router Router, worker Worker, size uint32) Connection {
+func newConnection(conn *net.TCPConn, manager Manager, worker Worker, size uint32) Connection {
 	c := &connection{
 		conn:    conn,
 		manager: manager,
-		router:  router,
 		worker:  worker,
 
 		size:  size,
@@ -107,20 +104,12 @@ func (c *connection) readProcessor() {
 			}
 			msg.SetData(data)
 
-			// 初始化上下文信息
-			ctx := &Context{
+			// 将消息交给工作池的任务队列中进行处理处理
+			c.worker.JoinTaskQueue(&Context{
 				protocol: msg.GetProtocol(),
 				data:     msg.GetData(),
 				conn:     c,
-			}
-
-			if c.worker.GetWorkerPoolSize() > 0 {
-				// 将消息交给工作池的任务队列中进行处理处理
-				c.worker.JoinTaskQueue(ctx)
-			} else {
-				// 使用路由处理消息
-				c.router.do(ctx)
-			}
+			})
 		}
 	}
 }
@@ -181,17 +170,13 @@ func (c *connection) finalizer() {
 	if c.close {
 		return
 	}
-
 	log.Println(fmt.Sprintf("[ CONNECT ] remote addr %s connection is closeing", c.RemoteAddr()))
 
 	c.conn.Close()
-
 	c.manager.Del(c)
-
 	close(c.msgCh)
 
 	log.Println(fmt.Sprintf("[ CONNECT ] remote addr %s connection closed", c.RemoteAddr()))
-
 	c.close = true
 }
 

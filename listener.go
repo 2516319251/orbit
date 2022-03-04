@@ -38,7 +38,7 @@ func New(opts ...Option) Server {
 	// 初始化默认配置
 	o := options{
 		network: "tcp",
-		ip:      "127.0.0.1",
+		ip:      "0.0.0.0",
 		port:    62817,
 		pool:    8,
 		conns:   512,
@@ -168,7 +168,7 @@ func (l *listener) on() error {
 		}
 
 		// 开启协程处理当前连接任务
-		go newConnection(conn, l.mgr, l.router, l.work, l.opts.packet).Handle()
+		go newConnection(conn, l.mgr, l.work, l.opts.packet).Handle()
 	}
 }
 

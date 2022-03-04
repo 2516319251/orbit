@@ -2,6 +2,7 @@ package orbit
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 )
@@ -57,6 +58,9 @@ func WithMaxConns(conns int) Option {
 
 // WithMaxWorkerPoolSize 工作池最大数
 func WithMaxWorkerPoolSize(size int) Option {
+	if size < 1 {
+		panic(fmt.Sprintf("worker pool size cannt less than 1"))
+	}
 	return func(o *options) {
 		o.pool = size
 	}
