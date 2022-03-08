@@ -22,8 +22,8 @@ type router struct {
 	apis map[uint32]HandlerFunc
 }
 
-// InitRouter 路由初始化
-func InitRouter() Router {
+// Setup 路由初始化
+func Setup() Router {
 	log.Println(fmt.Sprintf("[ ROUTER ] router init"))
 	return &router{
 		apis: make(map[uint32]HandlerFunc),

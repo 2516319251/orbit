@@ -1,10 +1,8 @@
 package orbit
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"time"
 )
 
 // Option 选项闭包函数
@@ -21,10 +19,7 @@ type options struct {
 	tasks  int
 	packet uint32
 
-	ctx     context.Context
 	signals []os.Signal
-	timeout time.Duration
-
 	router Router
 }
 
@@ -80,24 +75,10 @@ func WithMaxMessagePacketSize(size uint32) Option {
 	}
 }
 
-// WithContext 上下文
-func WithContext(ctx context.Context) Option {
-	return func(o *options) {
-		o.ctx = ctx
-	}
-}
-
 // WithSignal 停止服务信号
 func WithSignal(signals ...os.Signal) Option {
 	return func(o *options) {
 		o.signals = signals
-	}
-}
-
-// WithStopTimeout 超时时间
-func WithStopTimeout(timeout time.Duration) Option {
-	return func(o *options) {
-		o.timeout = timeout
 	}
 }
 

@@ -1,23 +1,19 @@
 package orbit
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"os/signal"
-	"sync"
-	"time"
-
-	"golang.org/x/sync/errgroup"
 )
 
 // Server 监听者接口
 type Server interface {
 	Run() error
-	Shutdown() error
+	On() error
+	Off() error
 }
 
 // listener 监听器结构体
@@ -28,9 +24,6 @@ type listener struct {
 	mgr    Manager
 	router Router
 	work   Worker
-
-	ctx    context.Context
-	cancel context.CancelFunc
 }
 
 // New 实例化监听器
@@ -44,8 +37,6 @@ func New(opts ...Option) Server {
 		conns:   512,
 		tasks:   1024,
 		packet:  4096,
-		timeout: 1 * time.Second,
-		ctx:     context.Background(),
 	}
 
 	// 加载自定义配置
@@ -57,7 +48,6 @@ func New(opts ...Option) Server {
 		panic("router is nil")
 	}
 
-	ctx, cancel := context.WithCancel(o.ctx)
 	return &listener{
 		opts: o,
 		mgr:  &manager{conns: make(map[string]Connection)},
@@ -67,68 +57,28 @@ func New(opts ...Option) Server {
 			taskQueue: make([]chan *Context, o.pool),
 			router:    o.router,
 		},
-		ctx:    ctx,
-		cancel: cancel,
 	}
 }
 
 // Run 开始监听服务
 func (l *listener) Run() error {
-	log.Println(fmt.Sprintf("[ LISTENER ] startup"))
-
-	// 根据上下文信息做停止监听处理
-	wg := sync.WaitGroup{}
-	eg, ctx := errgroup.WithContext(l.ctx)
-	eg.Go(func() error {
-		<-ctx.Done()
-		return l.off()
-	})
-
-	// 启动监听服务
-	wg.Add(1)
-	eg.Go(func() error {
-		wg.Done()
-		return l.on()
-	})
-	wg.Wait()
+	go func() {
+		if e := l.On(); e != nil {
+			panic(e)
+		}
+	}()
 
 	// 接收系统信号
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, l.opts.signals...)
+	<-quit
 
-	// 处理关闭 goroutine
-	eg.Go(func() error {
-		for {
-			select {
-			// 来自上下文的关闭通知
-			case <-ctx.Done():
-				return ctx.Err()
-			// 来自信号关闭的通知
-			case <-quit:
-				if err := l.Shutdown(); err != nil {
-					return err
-				}
-				return nil
-			}
-		}
-	})
-
-	// 返回错误信息
-	if err := eg.Wait(); err != nil && !errors.Is(err, context.Canceled) {
-		return err
-	}
-	return nil
+	return l.Off()
 }
 
-// Shutdown 关闭监听服务
-func (l *listener) Shutdown() error {
-	if l.cancel != nil {
-		l.cancel()
-	}
-	return nil
-}
+func (l *listener) On() error {
+	log.Println(fmt.Sprintf("[ LISTENER ] startup"))
 
-func (l *listener) on() error {
 	// 解析地址
 	address := fmt.Sprintf("%s:%d", l.opts.ip, l.opts.port)
 	addr, err := net.ResolveTCPAddr(l.opts.network, address)
@@ -172,7 +122,7 @@ func (l *listener) on() error {
 	}
 }
 
-func (l *listener) off() error {
+func (l *listener) Off() error {
 	log.Println(fmt.Sprintf("[ LISTENER ] listener is closeing"))
 
 	// 关闭所有连接

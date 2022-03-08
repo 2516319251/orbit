@@ -1,12 +1,9 @@
 package orbit
 
 import (
-	"context"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
-	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestWithNetwork(t *testing.T) {
@@ -58,14 +55,6 @@ func TestWithMaxMessagePacketSize(t *testing.T) {
 	assert.Equal(t, v, o.packet)
 }
 
-func TestWithContext(t *testing.T) {
-	type ctxKey = struct{}
-	o := &options{}
-	v := context.WithValue(context.TODO(), ctxKey{}, "ctx")
-	WithContext(v)(o)
-	assert.Equal(t, v, o.ctx)
-}
-
 type mockSig struct{}
 
 func (m *mockSig) String() string { return "sig" }
@@ -80,17 +69,10 @@ func TestWithSignal(t *testing.T) {
 	assert.Equal(t, v, o.signals)
 }
 
-func TestWithTimeout(t *testing.T) {
-	o := &options{}
-	v := time.Duration(10)
-	WithStopTimeout(v)(o)
-	assert.Equal(t, v, o.timeout)
-}
-
 type mockRouter struct{}
 
 func (m *mockRouter) Handle(protocol uint32, handler HandlerFunc) {}
-func (m *mockRouter) do(ctx *Context)                         {}
+func (m *mockRouter) exec(ctx *Context)                         {}
 
 func TestWithRouter(t *testing.T) {
 	o := &options{}

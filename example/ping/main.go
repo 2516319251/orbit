@@ -1,7 +1,7 @@
 package main
 
 import (
-	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -11,10 +11,10 @@ import (
 
 func main() {
 	go Client0()
-	//go Client1()
-	//go Client2()
+	go Client1()
+	go Client2()
 
-	r := orbit.InitRouter()
+	r := orbit.Setup()
 	r.Handle(1, func(ctx *orbit.Context) {
 		fmt.Printf("[ SERVER ] receive msg form client: protocol = %d, data = %s\n", ctx.Protocol(), ctx.RawData())
 		ctx.Write([]byte("pong"))
@@ -23,13 +23,12 @@ func main() {
 	srv := orbit.New(
 		orbit.WithNetwork("tcp"),
 		orbit.WithIP("127.0.0.1"),
-		orbit.WithPort(62817),
+		orbit.WithPort(4399),
 		orbit.WithMaxConns(10),
 		orbit.WithMaxMessagePacketSize(1024),
 		orbit.WithMaxWorkerPoolSize(1),
 		orbit.WithMaxWorkerTasksQueueLength(64),
 		orbit.WithRouter(r),
-		orbit.WithContext(context.Background()),
 	)
 	if err := srv.Run(); err != nil {
 		panic(err)
@@ -38,7 +37,7 @@ func main() {
 
 func Client0() {
 	time.Sleep(3 * time.Second)
-	conn, err := net.Dial("tcp", "127.0.0.1:62817")
+	conn, err := net.Dial("tcp", "127.0.0.1:4399")
 	if err != nil {
 		panic(err)
 	}
@@ -49,18 +48,18 @@ func Client0() {
 
 func Client1() {
 	time.Sleep(3 * time.Second)
-	conn, err := net.Dial("tcp", "127.0.0.1:62817")
+	conn, err := net.Dial("tcp", "127.0.0.1:4399")
 	if err != nil {
 		panic(err)
 	}
 
 	read(conn)
-	//conn.Close()
+	conn.Close()
 }
 
 func Client2() {
 	time.Sleep(3 * time.Second)
-	conn, err := net.Dial("tcp", "127.0.0.1:62817")
+	conn, err := net.Dial("tcp", "127.0.0.1:4399")
 	if err != nil {
 		panic(err)
 	}
@@ -82,6 +81,9 @@ func read(conn net.Conn) {
 		head := make([]byte, dp.GetHeadLength())
 		_, err = io.ReadFull(conn, head)
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return
+			}
 			panic(err)
 		}
 
@@ -95,6 +97,9 @@ func read(conn net.Conn) {
 			data = make([]byte, receive.GetLength())
 			_, e := io.ReadFull(conn, data)
 			if e != nil {
+				if errors.Is(err, io.EOF) {
+					return
+				}
 				panic(e)
 			}
 		}

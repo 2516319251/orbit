@@ -12,7 +12,7 @@ func TestNew(t *testing.T) {
 
 	go Client4New()
 
-	r := InitRouter()
+	r := Setup()
 	r.Handle(1, func(ctx *Context) {
 		fmt.Printf("[ SERVER ] receive msg form client: protocol = %d, len = %d, data = %s\n",  ctx.Protocol(), len(ctx.RawData()), string(ctx.RawData()))
 		ctx.Write(ctx.RawData())
